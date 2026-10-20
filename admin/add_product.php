@@ -20,8 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") { // Post gamit para nakatago sa URL,
     $name = $_POST["name"];
     $description = $_POST["description"];
     $price = (float) $_POST["price"];
-    // Inventory note: per-size quantities are entered after creating this product.
-    $stock = 0;
+    $stock = (int) $_POST["stock_quantity"];
     $category = $_POST["category"];
     $imageUrl = trim($_POST["image_url"]);
 
@@ -59,7 +58,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") { // Post gamit para nakatago sa URL,
                 <textarea name="description" required></textarea>
                 <label>Price</label>
                 <input type="number" step="0.01" name="price" required>
-                <p class="stock-line">After creating the product, open <strong>Sizes / Stock</strong> in the admin panel to enter quantities for each size.</p>
+                <label>Stock Quantity</label>
+                <input type="number" name="stock_quantity" required>
                 <label>Category</label>
                 <select name="category" required>
                     <option value="MEN">MEN</option>

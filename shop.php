@@ -1,4 +1,5 @@
 <?php
+// Page purpose: Product catalog: handles product filters and shows size-specific stock and add-to-cart controls.
 session_start();
 require_once __DIR__ . '/auth_activity.php';
 
@@ -20,6 +21,7 @@ $products = searchProducts($searchName, $searchCategory, $minPrice, $maxPrice);
 
 normalizeShoppingCart();
 ?>
+<!-- Page display: the HTML below renders the prepared data and forms. -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -48,6 +50,19 @@ normalizeShoppingCart();
         .size-picker label { margin: 0 0 5px; }
         .size-picker select { width: 100%; }
         .size-picker option:disabled { color: #999; }
+        .size-chart-trigger { margin-top: 6px; padding: 5px 0; border: 0; background: transparent; color: var(--terracotta-dark); font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+        .size-chart-trigger:hover { color: var(--ink); }
+        .size-chart-dialog { position: relative; width: min(650px, calc(100vw - 32px)); max-height: 90vh; padding: 26px; border: 1px solid var(--border); border-radius: 12px; color: var(--ink); background: #fff; box-shadow: 0 18px 70px rgba(0,0,0,.35); }
+        .size-chart-dialog::backdrop { background: rgba(15,13,12,.65); }
+        .size-chart-heading { display: flex; justify-content: space-between; align-items: start; gap: 18px; margin-bottom: 12px; }
+        .size-chart-heading h2 { margin: 0; }
+        .size-chart-heading p, .size-chart-note { color: var(--muted); font-size: 14px; }
+        .size-chart-close { flex: 0 0 40px; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: #292824; color: #fff; font-size: 25px; line-height: 1; cursor: pointer; }
+        .size-chart-table-wrap { overflow-x: auto; }
+        .size-chart-table { width: 100%; min-width: 400px; border-collapse: collapse; }
+        .size-chart-table th, .size-chart-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+        .size-chart-table th { color: var(--muted); font-size: 14px; }
+        .size-chart-note { margin: 14px 0 0; line-height: 1.5; }
     </style>
 </head>
 <body class="app-body">
@@ -88,6 +103,7 @@ normalizeShoppingCart();
                 <?php foreach ($products as $product): ?>
                     <div class="product-card">
                         <?php
+                        // Size inventory: each dropdown and product total use the size stock table.
                         $sizeStock = getProductSizeStock($product['id']);
                         $totalSizeStock = array_sum($sizeStock);
                         ?>
@@ -116,7 +132,7 @@ normalizeShoppingCart();
                                             <option value="<?php echo htmlspecialchars($size); ?>" data-stock="<?php echo $sizeQuantity; ?>" <?php echo $sizeQuantity === 0 ? 'disabled' : ''; ?>><?php echo htmlspecialchars($size); ?><?php echo $sizeQuantity === 0 ? ' (Out of stock)' : ' (' . $sizeQuantity . ' available)'; ?></option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <small class="stock-line">Choose an available size.</small>
+                                    <button type="button" class="size-chart-trigger" data-size-chart-open aria-haspopup="dialog">Size Chart</button>
                                 </div>
                                 <input type="number" name="quantity" value="1" min="1" max="1" style="width: 60px; display: inline-block;">
                                 <button type="submit" class="btn">Add to Cart</button>
@@ -133,7 +149,32 @@ normalizeShoppingCart();
         <button type="button" class="image-lightbox-close" aria-label="Close enlarged image">&times;</button>
         <img id="image-lightbox-content" src="" alt="">
     </dialog>
+    <!-- Size guide: one accessible pop-up is shared by all product cards. Measurements are approximate shirt body measurements. -->
+    <dialog class="size-chart-dialog" id="size-chart-dialog" aria-labelledby="size-chart-title">
+        <div class="size-chart-heading">
+            <div>
+                <h2 id="size-chart-title">Shirt Size Chart</h2>
+                <p>General adult sizing · body chest/bust circumference</p>
+            </div>
+            <button type="button" class="size-chart-close" aria-label="Close size chart">&times;</button>
+        </div>
+        <div class="size-chart-table-wrap">
+            <table class="size-chart-table">
+                <thead><tr><th>Size</th><th>Men's chest (cm)</th><th>Women's bust (cm)</th></tr></thead>
+                <tbody>
+                    <tr><td>XS</td><td>82–87</td><td>76–81</td></tr>
+                    <tr><td>S</td><td>88–94</td><td>82–87</td></tr>
+                    <tr><td>M</td><td>95–101</td><td>88–93</td></tr>
+                    <tr><td>L</td><td>102–108</td><td>94–99</td></tr>
+                    <tr><td>XL</td><td>109–115</td><td>100–105</td></tr>
+                    <tr><td>2XL</td><td>116–122</td><td>106–112</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="size-chart-note">Measure around the fullest part of your chest or bust. This is a general guide; sizing can vary by brand and fit. If you are between sizes, choose based on how loose or fitted you prefer your shirt.</p>
+    </dialog>
     <script>
+        // Quantity control: cap the input at the selected size's available quantity.
         document.querySelectorAll('.size-picker select').forEach(function (select) {
             const quantityInput = select.closest('form').querySelector('input[name="quantity"]');
             function syncMaximum() {
@@ -170,6 +211,15 @@ normalizeShoppingCart();
         });
         lightbox.addEventListener('click', function (event) {
             if (event.target === lightbox) lightbox.close();
+        });
+
+        const sizeChart = document.getElementById('size-chart-dialog');
+        document.querySelectorAll('[data-size-chart-open]').forEach(function (button) {
+            button.addEventListener('click', function () { sizeChart.showModal(); });
+        });
+        sizeChart.querySelector('.size-chart-close').addEventListener('click', function () { sizeChart.close(); });
+        sizeChart.addEventListener('click', function (event) {
+            if (event.target === sizeChart) sizeChart.close();
         });
     </script>
 </body>

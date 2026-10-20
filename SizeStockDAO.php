@@ -1,7 +1,10 @@
 <?php
+// File purpose: Size-stock data access: creates the inventory table and manages stock by clothing size.
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/cart_helpers.php';
 
+// Database setup: create one inventory row for every product and clothing size.
+// Review note: Create the per-size stock table automatically if it is missing.
 function ensureProductSizeStockTable() {
     static $ready = false;
     if ($ready) return;
@@ -20,6 +23,7 @@ function ensureProductSizeStockTable() {
 }
 
 // Read support: missing size rows are initialized to zero so they appear sold out.
+// Review note: Return available quantity for every supported size of a product.
 function getProductSizeStock($productId) {
     ensureProductSizeStockTable();
     $conn = getConnection();
@@ -33,6 +37,8 @@ function getProductSizeStock($productId) {
     return $stock;
 }
 
+// Admin save: validate all sizes and keep the legacy product total in sync.
+// Review note: Validate and save all size quantities as one database transaction.
 function saveProductSizeStock($productId, array $quantities) {
     ensureProductSizeStockTable();
     $allowedSizes = availableClothingSizes();
@@ -57,6 +63,8 @@ function saveProductSizeStock($productId, array $quantities) {
     }
 }
 
+// Checkout: subtract only when the selected size has enough units available.
+// Review note: Reduce a size quantity only when enough units remain.
 function reserveSizeStock($productId, $size, $quantity) {
     if (!in_array($size, availableClothingSizes(), true) || $quantity < 1) return false;
     ensureProductSizeStockTable();
@@ -68,16 +76,35 @@ function reserveSizeStock($productId, $size, $quantity) {
     return true;
 }
 
+// Cancellation: restore the units to the exact size that was ordered.
+// Review note: Return cancelled units to the exact size originally ordered.
 function restoreSizeStock($productId, $size, $quantity) {
     if (!in_array($size, availableClothingSizes(), true) || $quantity < 1) return false;
     ensureProductSizeStockTable();
     $conn = getConnection();
-    $update = $conn->prepare('INSERT INTO product_size_stock (product_id, size, quantity) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)');
-    $update->execute([(int)$productId, $size, (int)$quantity]);
-    syncProductStockTotal($conn, $productId);
-    return true;
+    $conn->beginTransaction();
+    try {
+        // Lock/check the product first: deleted products cannot receive stock, and this avoids a foreign-key error.
+        $product = $conn->prepare('SELECT id FROM products WHERE id = ? FOR UPDATE');
+        $product->execute([(int)$productId]);
+        if (!$product->fetchColumn()) {
+            $conn->commit();
+            return false;
+        }
+
+        $update = $conn->prepare('INSERT INTO product_size_stock (product_id, size, quantity) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity)');
+        $update->execute([(int)$productId, $size, (int)$quantity]);
+        syncProductStockTotal($conn, $productId);
+        $conn->commit();
+        return true;
+    } catch (Throwable $error) {
+        if ($conn->inTransaction()) $conn->rollBack();
+        throw $error;
+    }
 }
 
+// Keep existing reports and product listings using the sum of size quantities.
+// Review note: Keep the old product stock total equal to the sum across sizes.
 function syncProductStockTotal(PDO $conn, $productId) {
     $update = $conn->prepare('UPDATE products SET stock_quantity = (SELECT COALESCE(SUM(quantity), 0) FROM product_size_stock WHERE product_id = ?) WHERE id = ?');
     $update->execute([(int)$productId, (int)$productId]);

@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050" role="img" aria-labelledby="title desc">
+  <title id="title">Clothify Updated Entity Relationship Diagram</title>
+  <desc id="desc">Six tables: users, orders, order_items, products, product_size_stock, and user_activity. Product size stock has the explicit foreign key to products; other links are inferred from application joins and matching IDs.</desc>
+  <defs>
+    <style>
+      .bg{fill:#faf7f2}.title{font:700 32px Arial,sans-serif;fill:#292824}.sub{font:16px Arial,sans-serif;fill:#746f66}
+      .box{fill:#fff;stroke:#d9d0c4;stroke-width:2;rx:14}.head{fill:#292824;rx:12}.headtxt{font:700 20px Arial,sans-serif;fill:#fff}
+      .field{font:16px Consolas,monospace;fill:#292824}.key{font:700 13px Arial,sans-serif;fill:#97500f}.note{font:14px Arial,sans-serif;fill:#746f66}
+      .fkline{fill:none;stroke:#a85c16;stroke-width:3}.logicline{fill:none;stroke:#77736c;stroke-width:2.5;stroke-dasharray:9 7}
+      .rel{font:700 14px Arial,sans-serif;fill:#292824}.legend{font:14px Arial,sans-serif;fill:#292824}
+    </style>
+  </defs>
+  <rect class="bg" width="1600" height="1050"/>
+  <text class="title" x="55" y="58">Clothify — Updated Entity Relationship Diagram</text>
+  <text class="sub" x="55" y="88">Based on the current PHP data access code and size-stock setup.</text>
+
+  <!-- Account table -->
+  <rect class="box" x="55" y="145" width="365" height="350"/>
+  <rect class="head" x="55" y="145" width="365" height="50"/>
+  <text class="headtxt" x="80" y="178">users</text>
+  <text class="key" x="80" y="228">PK</text><text class="field" x="145" y="228">id</text>
+  <text class="field" x="80" y="264">name</text><text class="field" x="80" y="300">email</text>
+  <text class="field" x="80" y="336">password</text><text class="field" x="80" y="372">address</text>
+  <text class="field" x="80" y="408">role</text><text class="field" x="80" y="444">phone_number</text>
+  <text class="field" x="80" y="480">otp, otp_expiry</text>
+
+  <!-- Order header -->
+  <rect class="box" x="585" y="145" width="365" height="285"/>
+  <rect class="head" x="585" y="145" width="365" height="50"/>
+  <text class="headtxt" x="610" y="178">orders</text>
+  <text class="key" x="610" y="228">PK</text><text class="field" x="675" y="228">id</text>
+  <text class="key" x="610" y="264">FK*</text><text class="field" x="675" y="264">user_id</text>
+  <text class="field" x="610" y="300">order_date</text><text class="field" x="610" y="336">total_amount</text>
+  <text class="field" x="610" y="372">status</text>
+  <text class="note" x="610" y="405">* relationship inferred from application joins</text>
+
+  <!-- Order detail rows -->
+  <rect class="box" x="1115" y="145" width="420" height="320"/>
+  <rect class="head" x="1115" y="145" width="420" height="50"/>
+  <text class="headtxt" x="1140" y="178">order_items</text>
+  <text class="key" x="1140" y="228">PK</text><text class="field" x="1205" y="228">id</text>
+  <text class="key" x="1140" y="264">FK*</text><text class="field" x="1205" y="264">order_id</text>
+  <text class="key" x="1140" y="300">FK*</text><text class="field" x="1205" y="300">product_id</text>
+  <text class="field" x="1140" y="336">quantity</text><text class="field" x="1140" y="372">price_at_purchase</text>
+  <text class="field" x="1140" y="408">size</text>
+  <text class="note" x="1140" y="442">* relationship inferred from application joins</text>
+
+  <!-- Product catalog -->
+  <rect class="box" x="1115" y="590" width="420" height="320"/>
+  <rect class="head" x="1115" y="590" width="420" height="50"/>
+  <text class="headtxt" x="1140" y="623">products</text>
+  <text class="key" x="1140" y="673">PK</text><text class="field" x="1205" y="673">id</text>
+  <text class="field" x="1140" y="709">name</text><text class="field" x="1140" y="745">description</text>
+  <text class="field" x="1140" y="781">price</text><text class="field" x="1140" y="817">stock_quantity†</text>
+  <text class="field" x="1140" y="853">category, image_url</text>
+  <text class="note" x="1140" y="885">† mirrors the sum of per-size quantities</text>
+
+  <!-- Per-size inventory -->
+  <rect class="box" x="585" y="625" width="365" height="245"/>
+  <rect class="head" x="585" y="625" width="365" height="50"/>
+  <text class="headtxt" x="610" y="658">product_size_stock</text>
+  <text class="key" x="610" y="708">PK, FK</text><text class="field" x="700" y="708">product_id</text>
+  <text class="key" x="610" y="744">PK</text><text class="field" x="700" y="744">size</text>
+  <text class="field" x="610" y="780">quantity</text>
+  <text class="note" x="610" y="820">Composite primary key: (product_id, size)</text>
+  <text class="note" x="610" y="844">product_id → products.id (ON DELETE CASCADE)</text>
+
+  <!-- Latest activity snapshot -->
+  <rect class="box" x="55" y="650" width="365" height="190"/>
+  <rect class="head" x="55" y="650" width="365" height="50"/>
+  <text class="headtxt" x="80" y="683">user_activity</text>
+  <text class="key" x="80" y="733">PK*</text><text class="field" x="145" y="733">user_id</text>
+  <text class="field" x="80" y="769">last_seen</text>
+  <text class="note" x="80" y="810">One latest activity time per user</text>
+  <text class="note" x="80" y="830">* joins users.id in application logic</text>
+
+  <!-- Relationships: dashed lines are logical links inferred from code; orange is an explicit SQL foreign key. -->
+  <path class="logicline" d="M420 280 H500 V264 H585"/>
+  <text class="rel" x="455" y="250">1 to many</text>
+  <path class="logicline" d="M950 285 H1115"/>
+  <text class="rel" x="1000" y="265">1 to many</text>
+  <path class="logicline" d="M1325 465 V590"/>
+  <text class="rel" x="1340" y="535">many to 1</text>
+  <path class="fkline" d="M950 755 H1030 V755 H1115"/>
+  <text class="rel" x="980" y="735">1 to many</text>
+  <path class="logicline" d="M237 495 V650"/>
+  <text class="rel" x="250" y="580">1 to 0 or 1</text>
+
+  <!-- Legend and schema caveat -->
+  <text class="key" x="55" y="955">PK</text><text class="legend" x="95" y="955">Primary key</text>
+  <text class="key" x="205" y="955">FK</text><text class="legend" x="245" y="955">Foreign key</text>
+  <path class="fkline" d="M390 950 H450"/><text class="legend" x="462" y="955">Explicit SQL foreign key</text>
+  <path class="logicline" d="M690 950 H750"/><text class="legend" x="762" y="955">Logical link inferred from application code</text>
+  <text class="note" x="55" y="995">The project copy does not include the original CREATE TABLE statements for users, products, orders, and order_items.</text>
+  <text class="note" x="55" y="1018">Confirm their exact SQL field types and constraints in the live database; only product_size_stock's foreign key is explicitly declared in the reviewed code.</text>
+</svg>

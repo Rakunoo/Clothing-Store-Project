@@ -1,4 +1,5 @@
 <?php
+// Page purpose: Order history: lists a customer's purchases and offers deletion for cancelled orders.
 session_start();
 require_once __DIR__ . '/auth_activity.php';
 
@@ -11,8 +12,15 @@ require_once 'OrderDAO.php';
 require_once 'OrderItemDAO.php';
 
 $userId = $_SESSION["user_id"];
+$csrfToken = $_SESSION['csrf_token'] ?? bin2hex(random_bytes(32));
+$_SESSION['csrf_token'] = $csrfToken;
+$flashMessage = $_SESSION['orders_message'] ?? '';
+$flashType = $_SESSION['orders_message_type'] ?? 'success';
+unset($_SESSION['orders_message']);
+unset($_SESSION['orders_message_type']);
 $orders = getOrdersByUserId($userId);
 ?>
+<!-- Page display: the HTML below renders the prepared data and forms. -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -25,6 +33,10 @@ $orders = getOrdersByUserId($userId);
     <div class="page">
         <h1 style="margin-bottom: 24px;">My Orders</h1> 
 
+        <?php if ($flashMessage !== ''): ?>
+            <p class="message <?php echo $flashType === 'error' ? 'error' : 'success'; ?>"><?php echo htmlspecialchars($flashMessage); ?></p>
+        <?php endif; ?>
+
         <?php if (count($orders) === 0): ?> 
             <p class="empty-state">You haven't placed any orders yet. <a href="shop.php">Go shopping</a>.</p> 
         <?php else: ?>
@@ -32,7 +44,7 @@ $orders = getOrdersByUserId($userId);
                 <?php $items = getItemsWithProductInfo($order["id"]); ?>
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <strong>Order #<?php echo $order["id"]; ?></strong>
+                        <strong>Order #<?php echo (int)$order["account_order_number"]; ?></strong>
                         <span class="status-badge"><?php echo htmlspecialchars($order["status"]); ?></span>
                     </div>
 
@@ -51,9 +63,17 @@ $orders = getOrdersByUserId($userId);
                         <?php echo $order["order_date"]; ?> &middot; PHP <?php echo number_format($order["total_amount"], 2); ?>
                     </p>
 
-                    <?php if ($order["status"] === "Pending"): ?>
-                        <a class="small-link delete" href="cancel_order.php?id=<?php echo $order["id"]; ?>">Cancel Order</a>
-                    <?php endif; ?>
+                    <div class="order-actions">
+                        <?php if ($order["status"] === "Pending"): ?>
+                            <a class="small-link delete" href="cancel_order.php?id=<?php echo (int)$order["id"]; ?>">Cancel Order</a>
+                        <?php elseif ($order["status"] === "Cancelled"): ?>
+                            <form class="order-delete-form" method="POST" action="delete_cancelled_order.php" onsubmit="return confirm('Permanently delete this cancelled order and its details?');">
+                                <input type="hidden" name="order_id" value="<?php echo (int)$order["id"]; ?>">
+                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                                <button class="btn btn-danger" type="submit">Delete cancelled order</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>

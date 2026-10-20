@@ -1,4 +1,5 @@
 <?php
+// Page purpose: Admin catalog: lists products and provides links to product-management actions.
 session_start();
 require_once __DIR__ . '/../auth_activity.php';
 
@@ -16,6 +17,7 @@ require_once '../ProductDAO.php';
 
 $products = getAllProducts(); // Checks kung anong order meron
 ?>
+<!-- Page display: the HTML below renders the prepared data and forms. -->
 <!DOCTYPE html>
 <html>
 <head>
