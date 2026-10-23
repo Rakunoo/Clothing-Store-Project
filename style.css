@@ -308,6 +308,32 @@ th { color: var(--muted); font-weight: normal; font-size: 14px; text-transform: 
 .stat-card strong { display: block; font: 32px Georgia,serif; color: var(--terracotta-dark); }
 .stat-card span { color: var(--muted); font-size: 15px; }
 .stat-card span small { font-size: 14px; }
+
+/* Admin dashboard sales overview: two live totals and a responsive 30-day revenue chart. */
+.admin-sales-overview { margin: 28px 0 34px; }
+.admin-sales-heading { margin-bottom: 16px; }
+.admin-sales-heading h2 { margin-bottom: 0; }
+.sales-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.sales-summary-card, .sales-chart-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+.sales-summary-card { display: grid; gap: 6px; padding: 20px 22px; }
+.sales-summary-card strong { color: var(--terracotta-dark); font: 700 30px Georgia,serif; }
+.sales-summary-card span { color: var(--muted); }
+.sales-summary-card small { font-size: 13px; }
+.sales-chart-card { padding: 20px 22px 14px; }
+.sales-chart-title { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.sales-chart-title h3 { margin: 0 0 4px; font: 22px Georgia,serif; }
+.sales-chart-title p, .sales-chart-footnote { margin: 0; color: var(--muted); font-size: 14px; }
+.sales-chart-title > span { color: var(--muted); font-size: 13px; }
+.sales-chart-scroll { overflow-x: auto; }
+.sales-chart { display: block; width: 100%; min-width: 680px; height: auto; margin-top: 12px; overflow: visible; }
+.sales-chart-gridline { stroke: var(--border); stroke-width: 1; }
+.sales-chart-y-label, .sales-chart-x-label { fill: var(--muted); font: 12px Arial,sans-serif; }
+.sales-chart-bar { fill: var(--terracotta); transition: fill .18s ease; }
+.sales-chart-bar:hover { fill: var(--terracotta-dark); }
+.sales-chart-footnote { margin-top: 4px; font-size: 12px; }
+.order-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.order-delete-form { margin: 8px 0 0; }
+.order-delete-form .btn { margin: 0; padding: 8px 12px; font-size: 14px; }
 .stat-label { display: flex; align-items: center; gap: 8px; }
 .active-users-icon { width: 21px; height: 21px; fill: none; stroke: #278342; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: 0 0 auto; }
 
@@ -360,6 +386,10 @@ th { color: var(--muted); font-weight: normal; font-size: 14px; text-transform: 
 }
 /* Responsive block: stack navigation and content on narrow screens. */
 @media (max-width: 680px) {
+    .sales-summary-grid { grid-template-columns: 1fr; gap: 10px; }
+    .sales-summary-card { padding: 16px; }
+    .sales-summary-card strong { font-size: 26px; }
+    .sales-chart-card { padding: 16px 12px 12px; }
     /* Authentication block: login, registration, and password-reset layouts. */
 .auth-page { display: block; }
     .auth-gallery { min-height: 34vh; padding: 26px; }
@@ -402,5 +432,3 @@ th { color: var(--muted); font-weight: normal; font-size: 14px; text-transform: 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; }
 }
-
-

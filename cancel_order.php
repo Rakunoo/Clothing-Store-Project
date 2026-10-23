@@ -10,7 +10,6 @@ if (!isset($_SESSION["user_id"])) {
 require_once 'OrderDAO.php';
 require_once 'OrderItemDAO.php';
 require_once 'ProductDAO.php';
-require_once __DIR__ . '/SizeStockDAO.php';
 
 $orderId = $_GET["id"] ?? $_POST["id"] ?? null;
 $order = $orderId ? getOrderById($orderId) : null;
@@ -29,7 +28,7 @@ $items = getItemsWithProductInfo($orderId);
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     foreach ($items as $item) {
-        restoreSizeStock($item["product_id"], strtoupper($item["size"] ?? 'M'), (int)$item["quantity"]);
+        restoreStock($item["product_id"], $item["quantity"]);
     }
 
     updateOrderStatus($orderId, "Cancelled");

@@ -27,8 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $name = $_POST["name"];
     $description = $_POST["description"];
     $price = (float) $_POST["price"];
-    // Inventory note: the size-stock manager is the source of truth for total stock.
-    $stock = (int) $product["stock_quantity"];
+    $stock = (int) $_POST["stock_quantity"];
     $category = $_POST["category"];
     $imageUrl = trim($_POST["image_url"]);
 
@@ -67,7 +66,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <textarea name="description" required><?php echo htmlspecialchars($product["description"]); ?></textarea>
                 <label>Price</label>
                 <input type="number" step="0.01" name="price" value="<?php echo $product["price"]; ?>" required>
-                <p class="stock-line">Total stock: <?php echo (int)$product["stock_quantity"]; ?>. <a href="manage_size_stock.php?id=<?php echo (int)$product["id"]; ?>">Edit quantities by size</a>.</p>
+                <label>Stock Quantity</label>
+                <input type="number" name="stock_quantity" value="<?php echo $product["stock_quantity"]; ?>" required>
                 <label>Category</label>
                 <select name="category" required>
                     <option value="MEN" <?php if ($product["category"] === "MEN") echo "selected"; ?>>MEN</option>

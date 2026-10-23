@@ -1,0 +1,84 @@
+CLOTHIFY PROJECT REVIEW NOTES
+============================
+
+This is an annotated copy of the project for code review and presentation
+preparation. The comments in the source files describe the purpose of each
+important processing block. They do not change how the program works.
+
+CORE APPLICATION FILES
+----------------------
+db.php                 Opens the shared database connection.
+auth_activity.php      Records signed-in users as active for dashboard stats.
+UserDAO.php             User lookup, registration, password, OTP, and activity data.
+ProductDAO.php          Product search and create, read, update, and delete operations.
+OrderDAO.php            Order records, safe deletion of cancelled orders, and sales queries.
+OrderItemDAO.php        Order line items and the clothing size saved with each item.
+SizeStockDAO.php        Creates and manages inventory quantities for each size.
+cart_helpers.php        Defines supported sizes and normalizes the session cart.
+image-settings.php      Central image paths for login, registration, and dashboard cards.
+password-fields.js      Password visibility and client-side password field behavior.
+style.css               Shared colors, layout, forms, buttons, and responsive styling.
+includes/navbar.php     Shared navigation, active-page styling, and the total-unit cart badge for customer and admin sessions.
+
+CUSTOMER PAGES
+--------------
+register.php            Validates and saves a new customer account.
+login.php               Checks credentials and starts an authenticated session.
+logout.php              Ends the current session.
+forgot_password.php     Issues a demo OTP and validates a password reset.
+settings.php            Updates the signed-in user's profile or password.
+dashboard.php           Shows account stats, a 30-day sales chart, and admin-only sales totals.
+shop.php                Filters products, displays size stock, and provides a men's/women's shirt size chart.
+add_to_cart.php         Validates and adds a product/size quantity to the cart.
+cart.php                Shows cart lines and processes quantity changes/removals.
+checkout.php            Shows product image previews, size, quantity, and total cart units; click an image to open the large viewer before order placement.
+cancel_order.php        Lets the owner cancel a pending order and restores stock.
+my_orders.php           Lists order history and lets its owner delete cancelled orders.
+delete_cancelled_order.php Verifies a POST request and safely deletes a cancelled order.
+
+ADMIN PAGES
+-----------
+admin/admin_panel.php       Lists products and links to management actions.
+admin/add_product.php       Creates a product before its size stock is entered.
+admin/edit_product.php      Updates product details while preserving stock total.
+admin/delete_product.php   Confirms and deletes a selected product.
+admin/manage_size_stock.php Sets quantity independently for each supported size.
+admin/admin_orders.php      Reviews orders and changes status; cancellation restores stock.
+admin/admin_reports.php     Shows order status and top-selling products.
+
+CANCELLED ORDER DELETION
+------------------------
+Customers can delete only their own orders after the status is Cancelled. The
+My Orders form uses a session CSRF token and asks for confirmation. OrderDAO.php
+checks ownership and status in a transaction, deletes the order lines first,
+then removes the order record. Deleting an already-cancelled order does not
+change inventory again; stock was restored when the cancellation was processed.
+
+SHOP SIZE CHART
+---------------
+The Size Chart button under each available product's size selector opens one
+shared dialog with general men's and women's shirt chest/bust measurements in cm.
+The values are approximate body measurements and the dialog notes that brand fit
+can vary.
+
+INVENTORY DESIGN NOTE
+---------------------
+SizeStockDAO.php creates the product_size_stock database table automatically
+when the size inventory feature first runs. Therefore product_size_stock.sql
+is optional for this version. Keep the SQL file if you want a separate schema
+reference or plan to create the table manually; deleting the SQL file does not
+delete the database table that PHP has already created.
+
+DEPLOYMENT NOTE
+---------------
+This folder is a complete annotated project copy. To use the comments in the
+XAMPP project, copy the source files from this folder into the XAMPP project
+folder. Preserve any local database settings or assets that differ.
+
+DASHBOARD SALES OVERVIEW
+------------------------
+All signed-in users can view the daily revenue chart for the last 30 calendar days.
+The chart is calculated from orders.order_date and orders.total_amount; cancelled
+orders are excluded. OrderDAO.php prepares the daily values and dashboard.php renders
+the chart as SVG. Current total revenue and order-count cards appear only for admins.
+The Sales Report keeps its order-status and top-product sections.

@@ -6,7 +6,6 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 require_once __DIR__ . '/ProductDAO.php';
-require_once __DIR__ . '/SizeStockDAO.php';
 require_once __DIR__ . '/cart_helpers.php';
 
 $cart = normalizeShoppingCart();
@@ -22,10 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $quantity = (int)($_POST['quantity'] ?? 0);
             $product = getProductById($id);
             if ($product && in_array($oldSize, availableClothingSizes(), true)) {
+                $otherQuantity = array_sum($_SESSION['cart'][$id] ?? []) - (int)($_SESSION['cart'][$id][$oldSize] ?? 0);
                 $existingAtNewSize = $oldSize === $size ? 0 : (int)($_SESSION['cart'][$id][$size] ?? 0);
-                $sizeStock = getProductSizeStock($id);
-                $available = max(0, (int)($sizeStock[$size] ?? 0) - $existingAtNewSize);
-                $quantity = min(max(0, $quantity), $available);
+                $quantity = min(max(0, $quantity), max(0, (int)$product['stock_quantity'] - $otherQuantity - $existingAtNewSize));
                 unset($_SESSION['cart'][$id][$oldSize]);
                 if ($quantity > 0) $_SESSION['cart'][$id][$size] = $existingAtNewSize + $quantity;
                 if (empty($_SESSION['cart'][$id])) unset($_SESSION['cart'][$id]);
@@ -68,7 +66,6 @@ foreach ($cart as $productId => $sizes) {
             <div class="card" style="padding:0"><table>
                 <tr><th style="padding-left:20px">Product</th><th>Size</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th style="padding-right:20px"></th></tr>
                 <?php foreach ($cartItems as $item): ?>
-                    <?php $itemSizeStock = getProductSizeStock($item['product']['id']); ?>
                     <tr>
                         <td style="padding-left:20px"><div class="product-cell"><?php if (!empty($item['product']['image_url'])): ?><img class="mini-thumb" src="<?php echo htmlspecialchars($item['product']['image_url']); ?>" alt=""><?php endif; ?><?php echo htmlspecialchars($item['product']['name']); ?></div></td>
                         <td><?php echo htmlspecialchars($item['size']); ?></td>
@@ -77,12 +74,9 @@ foreach ($cart as $productId => $sizes) {
                             <input type="hidden" name="update_id" value="<?php echo (int)$item['product']['id']; ?>">
                             <input type="hidden" name="old_size" value="<?php echo htmlspecialchars($item['size']); ?>">
                             <select name="size" aria-label="Size for <?php echo htmlspecialchars($item['product']['name']); ?>">
-                                <?php foreach (availableClothingSizes() as $size): ?>
-                                    <?php $sizeQuantity = $itemSizeStock[$size] ?? 0; $isCurrentSize = $size === $item['size']; ?>
-                                    <option value="<?php echo htmlspecialchars($size); ?>" <?php echo $isCurrentSize ? 'selected' : ''; ?> <?php echo $sizeQuantity === 0 && !$isCurrentSize ? 'disabled' : ''; ?>><?php echo htmlspecialchars($size); ?><?php echo $sizeQuantity === 0 ? ' (Out of stock)' : ''; ?></option>
-                                <?php endforeach; ?>
+                                <?php foreach (availableClothingSizes() as $size): ?><option value="<?php echo htmlspecialchars($size); ?>" <?php echo $size === $item['size'] ? 'selected' : ''; ?>><?php echo htmlspecialchars($size); ?></option><?php endforeach; ?>
                             </select>
-                            <input type="number" name="quantity" value="<?php echo (int)$item['quantity']; ?>" min="1" max="<?php echo max(1, (int)($itemSizeStock[$item['size']] ?? 0)); ?>">
+                            <input type="number" name="quantity" value="<?php echo (int)$item['quantity']; ?>" min="1" max="<?php echo (int)$item['product']['stock_quantity']; ?>">
                             <button type="submit" class="btn btn-outline">Update</button>
                         </form></td>
                         <td>PHP <?php echo number_format($item['subtotal'], 2); ?></td>
