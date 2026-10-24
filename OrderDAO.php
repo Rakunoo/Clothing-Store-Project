@@ -147,61 +147,184 @@ function deleteAllCancelledOrders() {
     }
 }
 
-// Review note: Calculate order count and revenue excluding cancelled orders.
-function getSalesSummary() {
+/**
+ * Build an inclusive date-range filter for order queries.
+ * Dates are validated first, and the end date is expanded to the next day so
+ * the whole selected day is included. The column name is supplied internally.
+ */
+function orderDateRangeFilter($startDate, $endDate, array &$params, $column = 'order_date') {
+    $conditions = [];
+
+    $start = is_string($startDate) && $startDate !== ''
+        ? DateTimeImmutable::createFromFormat('!Y-m-d', $startDate)
+        : false;
+    if ($start && $start->format('Y-m-d') === $startDate) {
+        $conditions[] = $column . ' >= ?';
+        $params[] = $start->format('Y-m-d 00:00:00');
+    }
+
+    $end = is_string($endDate) && $endDate !== ''
+        ? DateTimeImmutable::createFromFormat('!Y-m-d', $endDate)
+        : false;
+    if ($end && $end->format('Y-m-d') === $endDate) {
+        $conditions[] = $column . ' < ?';
+        $params[] = $end->modify('+1 day')->format('Y-m-d 00:00:00');
+    }
+
+    return $conditions ? ' AND ' . implode(' AND ', $conditions) : '';
+}
+
+// Review note: Calculate order count and revenue excluding cancelled orders, optionally within a date range.
+function getSalesSummary($startDate = null, $endDate = null) {
     $conn = getConnection();
+    $params = [];
+    $dateFilter = orderDateRangeFilter($startDate, $endDate, $params);
     $sql = "SELECT COUNT(*) AS order_count, COALESCE(SUM(total_amount), 0) AS total_revenue
-            FROM orders WHERE status != 'Cancelled'";
+            FROM orders WHERE status != 'Cancelled'" . $dateFilter;
     $stmt = $conn->prepare($sql);
-    $stmt->execute();
+    $stmt->execute($params);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-// Review note: Return one non-cancelled revenue total for each of the last 30 calendar days.
-function getDailySalesLast30Days() {
-    $conn = getConnection();
-    $sql = "SELECT DATE(order_date) AS sale_day, COALESCE(SUM(total_amount), 0) AS revenue
-            FROM orders
-            WHERE status != 'Cancelled'
-              AND order_date >= CURDATE() - INTERVAL 29 DAY
-              AND order_date < CURDATE() + INTERVAL 1 DAY
-            GROUP BY DATE(order_date)
-            ORDER BY sale_day";
-    $rows = $conn->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-    $revenueByDay = [];
-    foreach ($rows as $row) $revenueByDay[$row['sale_day']] = (float)$row['revenue'];
-
-    $dailySales = [];
-    for ($offset = 29; $offset >= 0; $offset--) {
-        $day = date('Y-m-d', strtotime("-$offset days"));
-        $dailySales[] = ['day' => $day, 'revenue' => $revenueByDay[$day] ?? 0.0];
+/**
+ * Return a complete revenue series for a date range.
+ * Empty days, weeks, or months are filled with zero so the chart keeps a
+ * continuous timeline. Only non-cancelled orders are included.
+ */
+function getSalesSeries($period = 'daily', $startDate = null, $endDate = null) {
+    $period = strtolower((string)$period);
+    if (!in_array($period, ['daily', 'weekly', 'monthly'], true)) {
+        $period = 'daily';
     }
-    return $dailySales;
+
+    $rangeStart = is_string($startDate) && $startDate !== ''
+        ? DateTimeImmutable::createFromFormat('!Y-m-d', $startDate)
+        : false;
+    $rangeEnd = is_string($endDate) && $endDate !== ''
+        ? DateTimeImmutable::createFromFormat('!Y-m-d', $endDate)
+        : false;
+    if (!$rangeStart || $rangeStart->format('Y-m-d') !== $startDate) {
+        $rangeStart = new DateTimeImmutable('today -29 days');
+    }
+    if (!$rangeEnd || $rangeEnd->format('Y-m-d') !== $endDate) {
+        $rangeEnd = new DateTimeImmutable('today');
+    }
+    if ($rangeStart > $rangeEnd) {
+        [$rangeStart, $rangeEnd] = [$rangeEnd, $rangeStart];
+    }
+
+    // Bucket boundaries are aligned to the start of each day, week, or month.
+    $bucketStart = $rangeStart;
+    $bucketEnd = $rangeEnd;
+    if ($period === 'weekly') {
+        $bucketStart = $rangeStart->modify('-' . ((int)$rangeStart->format('N') - 1) . ' days');
+        $bucketEnd = $rangeEnd->modify('-' . ((int)$rangeEnd->format('N') - 1) . ' days');
+        $groupExpression = 'DATE_SUB(DATE(order_date), INTERVAL WEEKDAY(order_date) DAY)';
+    } elseif ($period === 'monthly') {
+        $bucketStart = $rangeStart->modify('first day of this month');
+        $bucketEnd = $rangeEnd->modify('first day of this month');
+        $groupExpression = "DATE_FORMAT(order_date, '%Y-%m-01')";
+    } else {
+        $groupExpression = 'DATE(order_date)';
+    }
+
+    $conn = getConnection();
+    $params = [];
+    $dateFilter = orderDateRangeFilter(
+        $rangeStart->format('Y-m-d'),
+        $rangeEnd->format('Y-m-d'),
+        $params
+    );
+    $sql = "SELECT $groupExpression AS bucket,
+                   COALESCE(SUM(total_amount), 0) AS revenue,
+                   COUNT(*) AS order_count
+            FROM orders
+            WHERE status != 'Cancelled'" . $dateFilter . "
+            GROUP BY bucket
+            ORDER BY bucket";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+
+    $valuesByBucket = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $valuesByBucket[(string)$row['bucket']] = [
+            'revenue' => (float)$row['revenue'],
+            'order_count' => (int)$row['order_count'],
+        ];
+    }
+
+    $series = [];
+    if ($period === 'daily') {
+        for ($day = $bucketStart; $day <= $bucketEnd; $day = $day->modify('+1 day')) {
+            $key = $day->format('Y-m-d');
+            $series[] = [
+                'key' => $key,
+                'label' => $day->format('M j'),
+                'full_label' => $day->format('M j, Y'),
+                'revenue' => $valuesByBucket[$key]['revenue'] ?? 0.0,
+                'order_count' => $valuesByBucket[$key]['order_count'] ?? 0,
+            ];
+        }
+    } elseif ($period === 'weekly') {
+        for ($week = $bucketStart; $week <= $bucketEnd; $week = $week->modify('+7 days')) {
+            $key = $week->format('Y-m-d');
+            $weekEnd = $week->modify('+6 days');
+            $series[] = [
+                'key' => $key,
+                'label' => $week->format('M j'),
+                'full_label' => 'Week of ' . $week->format('M j') . ' - ' . $weekEnd->format('M j, Y'),
+                'revenue' => $valuesByBucket[$key]['revenue'] ?? 0.0,
+                'order_count' => $valuesByBucket[$key]['order_count'] ?? 0,
+            ];
+        }
+    } else {
+        for ($month = $bucketStart; $month <= $bucketEnd; $month = $month->modify('+1 month')) {
+            $key = $month->format('Y-m-01');
+            $series[] = [
+                'key' => $key,
+                'label' => $month->format('M Y'),
+                'full_label' => $month->format('F Y'),
+                'revenue' => $valuesByBucket[$key]['revenue'] ?? 0.0,
+                'order_count' => $valuesByBucket[$key]['order_count'] ?? 0,
+            ];
+        }
+    }
+
+    return $series;
 }
 
-// Review note: Group order totals by their current status.
-function getOrderCountsByStatus() {
+// Review note: Group order totals by their current status, optionally within a date range.
+function getOrderCountsByStatus($startDate = null, $endDate = null) {
     $conn = getConnection();
-    $sql = "SELECT status, COUNT(*) AS count FROM orders GROUP BY status";
+    $params = [];
+    $dateFilter = orderDateRangeFilter($startDate, $endDate, $params);
+    $sql = "SELECT status, COUNT(*) AS count
+            FROM orders
+            WHERE 1 = 1" . $dateFilter . "
+            GROUP BY status
+            ORDER BY status";
     $stmt = $conn->prepare($sql);
-    $stmt->execute();
+    $stmt->execute($params);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Review note: Rank products by quantities sold and related revenue.
-function getTopSellingProducts($limit = 5) {
+// Review note: Rank products by quantities sold and related revenue, optionally within a date range.
+function getTopSellingProducts($limit = 5, $startDate = null, $endDate = null) {
     $conn = getConnection();
+    $limit = max(1, (int)$limit);
+    $params = [];
+    $dateFilter = orderDateRangeFilter($startDate, $endDate, $params, 'orders.order_date');
     $sql = "SELECT products.name, SUM(order_items.quantity) AS total_sold,
                    SUM(order_items.quantity * order_items.price_at_purchase) AS total_revenue
             FROM order_items
             JOIN orders ON order_items.order_id = orders.id
             JOIN products ON order_items.product_id = products.id
-            WHERE orders.status != 'Cancelled'
+            WHERE orders.status != 'Cancelled'" . $dateFilter . "
             GROUP BY products.id, products.name
-            ORDER BY total_sold DESC
+            ORDER BY total_sold DESC, total_revenue DESC
             LIMIT $limit";
     $stmt = $conn->prepare($sql);
-    $stmt->execute();
+    $stmt->execute($params);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>

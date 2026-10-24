@@ -4,7 +4,7 @@ session_start();
 require_once __DIR__ . '/auth_activity.php';
 
 if (!isset($_SESSION["user_id"])) {
-    header("Location: login.php");
+    header("Location: login.php?next=shop.php");
     exit();
 }
 

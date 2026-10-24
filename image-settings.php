@@ -3,7 +3,7 @@ $imageSettings = [
     'login' => 'assets/images/taylorlogin.jpg',
     'register' => 'assets/images/oliviaregister.jpg',
     'forgot_password' => 'assets/images/floatingclothesforgot.jpg',
-    'dashboard_hero' => 'assets/images/sgadashboard.jpg',
+    'dashboard_hero' => 'assets/images/campaignphoto.jpg',
     'dashboard_cards' => [
         ['url' => 'assets/images/clairocard.jpg', 'title' => 'Everyday style'],
         ['url' => 'assets/images/sgacard.jpg', 'title' => 'New-season layers'],

@@ -20,6 +20,17 @@ password-fields.js      Password visibility and client-side password field behav
 style.css               Shared colors, layout, forms, buttons, and responsive styling.
 includes/navbar.php     Shared navigation, active-page styling, and the total-unit cart badge for customer and admin sessions.
 
+PUBLIC PAGE
+-----------
+index.php               Public landing page with the store introduction, live featured products, editorial imagery, and session-aware calls to action.
+
+LANDING PAGE ACCESS
+-------------------
+Guests can browse the landing page, but every shopping entry point (Shop now,
+View all pieces, product cards, and See every piece) opens the login page and
+returns to the shop after a successful sign-in. The landing page never links to
+the Admin Panel; signed-in admins reach it from the dashboard sidebar.
+
 CUSTOMER PAGES
 --------------
 register.php            Validates and saves a new customer account.
@@ -27,7 +38,7 @@ login.php               Checks credentials and starts an authenticated session.
 logout.php              Ends the current session.
 forgot_password.php     Issues a demo OTP and validates a password reset.
 settings.php            Updates the signed-in user's profile or password.
-dashboard.php           Shows account stats, a 30-day sales chart, and admin-only sales totals.
+dashboard.php           Shows account stats, a Daily/Weekly/Monthly sales chart for all users, and admin-only period totals.
 shop.php                Filters products, displays size stock, and provides a men's/women's shirt size chart.
 add_to_cart.php         Validates and adds a product/size quantity to the cart.
 cart.php                Shows cart lines and processes quantity changes/removals.
@@ -44,7 +55,7 @@ admin/edit_product.php      Updates product details while preserving stock total
 admin/delete_product.php   Confirms and deletes a selected product.
 admin/manage_size_stock.php Sets quantity independently for each supported size.
 admin/admin_orders.php      Reviews orders and changes status; cancellation restores stock.
-admin/admin_reports.php     Shows order status and top-selling products.
+admin/admin_reports.php     Filters sales by date range, shows the sales chart, order status, and top products, and exports the selected range to PDF or XLSX.
 
 CANCELLED ORDER DELETION
 ------------------------
@@ -69,16 +80,35 @@ is optional for this version. Keep the SQL file if you want a separate schema
 reference or plan to create the table manually; deleting the SQL file does not
 delete the database table that PHP has already created.
 
+PRODUCT CATALOG SEEDER
+----------------------
+database/seed_products.php adds the 30-item clothing catalog with local product
+images and six sizes of stock per item. Run it from the project root with:
+php database/seed_products.php
+The script is idempotent, skips products that already exist by name, and syncs
+each product's total stock with its size quantities. Product photos live in
+assets/images/products/. The two original demo products are kept, so a fresh
+seeded store contains 32 products in total.
+
 DEPLOYMENT NOTE
 ---------------
 This folder is a complete annotated project copy. To use the comments in the
 XAMPP project, copy the source files from this folder into the XAMPP project
 folder. Preserve any local database settings or assets that differ.
 
-DASHBOARD SALES OVERVIEW
-------------------------
-All signed-in users can view the daily revenue chart for the last 30 calendar days.
-The chart is calculated from orders.order_date and orders.total_amount; cancelled
-orders are excluded. OrderDAO.php prepares the daily values and dashboard.php renders
-the chart as SVG. Current total revenue and order-count cards appear only for admins.
-The Sales Report keeps its order-status and top-product sections.
+SALES DASHBOARD
+---------------
+All signed-in users can view the Sales chart on dashboard.php and switch between
+Daily (last 7 days), Weekly (last 12 weeks), and Monthly (last 12 months). The
+chart is calculated from orders.order_date and orders.total_amount; cancelled
+orders are excluded. OrderDAO.php prepares the values and includes/sales_chart.php
+renders the shared SVG graph. Admin summary cards reflect the selected period.
+The dashboard intentionally has no export controls.
+
+SALES REPORTS
+-------------
+admin/admin_reports.php is admin-only. It uses the same sales chart with a
+calendar start/end filter. Ranges up to 31 days group by day, up to 90 days by
+week, and longer ranges by month. The status counts and top products follow the
+selected range, and the PDF/XLSX exports include the range, summary, period
+series, status counts, and top products.

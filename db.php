@@ -1,9 +1,12 @@
 <?php
+// Keep PHP dates aligned with the store's local time and MySQL's system clock.
+date_default_timezone_set('Asia/Manila');
+
 function getConnection() {
     $host = "localhost";
-    $dbname = "clothing_store"; 
+    $dbname = "clothing_store_recovery"; 
     $user = "root";
-    $password = ""; 
+    $password = ""  ; 
 
     try {
         $conn = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $password);
